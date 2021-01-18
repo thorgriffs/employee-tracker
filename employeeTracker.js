@@ -79,11 +79,12 @@ function employeeManager() {
 }
 
 function viewEmployees() {
-  var query = 'SELECT ee.id, ee.first_name,ee.last_name,rl.title,dt.name AS department,rl.salary,CONCAT(e2.first_name," ",e2.last_name) AS manager '; 
+  var query = 'SELECT ee.id, ee.first_name,ee.last_name,rl.title,dt.name AS department, ';
+  query += 'rl.salary,CONCAT(e2.first_name," ",e2.last_name) AS manager '; 
   query += 'FROM employee ee ';
   query += 'LEFT JOIN role rl ON rl.id = ee.role_id ';
   query += 'LEFT JOIN department dt ON dt.id = rl.department_id ';
-  query += 'LEFT JOIN employee e2 ON e2.id = ee.manager_id ';
+  query += 'LEFT JOIN employee e2 ON e2.id = ee.manager_id';
   connection.query(query, function(err, res) {
     console.table(res);
 
@@ -92,12 +93,13 @@ function viewEmployees() {
 }
 
 function viewEmployeesDept() {
-  var query = 'SELECT ee.id, ee.first_name,ee.last_name,rl.title,dt.name AS department,rl.salary,CONCAT(e2.first_name," ",e2.last_name) AS manager '; 
+  var query = 'SELECT ee.id, ee.first_name,ee.last_name,rl.title,dt.name AS department, ';
+  query += 'rl.salary,CONCAT(e2.first_name," ",e2.last_name) AS manager '; 
   query += 'FROM employee ee ';
   query += 'LEFT JOIN role rl ON rl.id = ee.role_id ';
   query += 'LEFT JOIN department dt ON dt.id = rl.department_id ';
   query += 'LEFT JOIN employee e2 ON e2.id = ee.manager_id ';
-  query += 'Order by department ';
+  query += 'Order by department';
   connection.query(query, function(err, res) {
     console.table(res);
 
@@ -106,12 +108,13 @@ function viewEmployeesDept() {
 }
 
 function viewEmployeesMgr() {
-  var query = 'SELECT ee.id, ee.first_name,ee.last_name,rl.title,dt.name AS department,rl.salary,CONCAT(e2.first_name," ",e2.last_name) AS manager '; 
+  var query = 'SELECT ee.id, ee.first_name,ee.last_name,rl.title,dt.name AS department, ';
+  query += 'rl.salary,CONCAT(e2.first_name," ",e2.last_name) AS manager '; 
   query += 'FROM employee ee ';
   query += 'LEFT JOIN role rl ON rl.id = ee.role_id ';
   query += 'LEFT JOIN department dt ON dt.id = rl.department_id ';
   query += 'LEFT JOIN employee e2 ON e2.id = ee.manager_id ';
-  query += 'Order by manager ';
+  query += 'Order by manager';
   connection.query(query, function(err, res) {
     if (err) throw err;
 
@@ -144,53 +147,74 @@ function viewRoles() {
 }
 
 function addEmployee() {
-  var roles = [];
-  var managers = ['None'];
-  var query = 'SELECT r.id, r.title, e.id, CONCAT(e.first_name," ",e.last_name) AS manager '; 
-  query += 'FROM role r JOIN employee e ON e.role_id = r.id';
-  connection.query(query, function (err,res) {
+  var roleNames = [];
+  var managerNames = ['None'];
+  var query = 'SELECT id, CONCAT(first_name," ",last_name) AS manager FROM employee'; 
+  
+  connection.query(query, function (err, managers) {
     if (err) throw err;
-    for (var i = 0; i < res.length; i++) {
-      roles.push(res[i].title);
-      managers.push(res[i].manager);
-    }
 
-    inquirer
-    .prompt([
-      {
-      name: 'firstName',
-      type: 'input',
-      message: 'What is the employee\'s first name?',
-      },
-      {
-      name: 'lastName',
-      type: 'input',
-      message: 'What is the employee\'s last name?'
-      },
-      {
-      name: 'eeRole',
-      type: 'list',
-      message: 'What is the employee\'s role?',
-      choices: roles
-      },
-      {
-        name: 'eeMgr',
-        type: 'list',
-        message: 'Who is the employee\'s manager?',
-        choices: managers
+    query = 'SELECT id, title FROM role';
+    connection.query(query, function(err, roles) {
+      if (err) throw err;
+    
+      for (var i = 0; i < managers.length; i++) {
+        managerNames.push(managers[i].manager);
       }
-    ])
-    .then(function(answer) {
-      console.log(answer);
-      const manager = answer.eeMgr;
-      const mgrName = manager.split(' ')
-      console.log(mgrName[0],mgrName[1]);
+      for (var i = 0; i < roles.length; i++) {
+        roleNames.push(roles[i].title);
+      }
 
+      inquirer
+      .prompt([
+        {
+          name: 'firstName',
+          type: 'input',
+          message: 'What is the employee\'s first name?',
+        },
+        {
+          name: 'lastName',
+          type: 'input',
+          message: 'What is the employee\'s last name?'
+        },
+        {
+          name: 'eeRole',
+          type: 'list',
+          message: 'What is the employee\'s role?',
+          choices: roleNames
+        },
+        {
+          name: 'eeMgr',
+          type: 'list',
+          message: 'Who is the employee\'s manager?',
+          choices: managerNames
+        }
+      ])
+      .then(function(answer) {
+        //need to figure out how to handle null manager
+        var managerId = managers.filter(mgr => mgr.manager === answer.eeMgr)[0].id;
+        var roleId = roles.filter(role => role.title === answer.eeRole)[0].id;
 
-      employeeManager();
+        console.log(answer, managerId, roleId);
+        
+        connection.query(
+          'INSERT INTO employee SET ?',
+          {
+            first_name: answer.firstName,
+            last_name: answer.lastName,
+            role_id: roleId,
+            manager_id: managerId
+          },
+          function(err) {
+            if (err) throw err;
+            console.log('The employee was successfully added');
+            employeeManager();
+          }
+        );
+      });
     });
   });
-};
+}
 
 function removeEmployee() {
   var employees = [];
@@ -328,5 +352,3 @@ function addRole() {
     });
   });
 };
-    
-
