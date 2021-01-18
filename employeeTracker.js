@@ -219,12 +219,12 @@ function addEmployee() {
 }
 
 function removeEmployee() {
-  var employees = [];
-  var query = 'SELECT CONCAT(first_name," ",last_name) AS employee FROM employee'; 
-  connection.query(query, function (err,res) {
+  var employeeNames = [];
+  var query = 'SELECT id, CONCAT(first_name," ",last_name) AS employee FROM employee'; 
+  connection.query(query, function (err, employees) {
     if (err) throw err;
-    for (var i = 0; i < res.length; i++) {
-      employees.push(res[i].employee);
+    for (var i = 0; i < employees.length; i++) {
+      employeeNames.push(employees[i].employee);
     }
 
     inquirer
@@ -233,16 +233,30 @@ function removeEmployee() {
       name: 'remove',
       type: 'list',
       message: 'Which employee do you want to remove',
-      choices: employees
+      choices: employeeNames
       },
     ])
     .then(function(answer) {
-      console.log(answer);
+      var employeeId = employees.filter(ee => ee.employee === answer.remove)[0].id;
 
-      employeeManager();
+      console.log(answer, employeeId);
+        
+      connection.query(
+        'DELETE FROM employee WHERE id = ?', 
+        [
+          employeeId
+        ],
+        function(err) {
+          if (err) throw err;
+          console.log(answer.remove + ' was removed');
+          console.log(employeeId);
+          console.log(answer);
+          employeeManager();
+        }
+      );
     });
   });
-};
+}
 
 function editEmployeeRole() {
   var roles = [];
