@@ -190,9 +190,11 @@ function addEmployee() {
           choices: managerNames
         }
       ])
-      .then(function(answer) {
-        //need to figure out how to handle null manager
-        var managerId = managers.filter(mgr => mgr.manager === answer.eeMgr)[0].id;
+      .then(function(answer) {        
+        var managerId = null;
+        if (answer.eeMgr !== 'None') {
+          managerId = managers.filter(mgr => mgr.manager === answer.eeMgr)[0].id;
+        }
         var roleId = roles.filter(role => role.title === answer.eeRole)[0].id;
 
         console.log(answer, managerId, roleId);
