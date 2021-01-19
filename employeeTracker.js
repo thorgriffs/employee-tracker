@@ -237,9 +237,7 @@ function removeEmployee() {
       },
     ])
     .then(function(answer) {
-      var employeeId = employees.filter(ee => ee.employee === answer.remove)[0].id;
-
-      console.log(answer, employeeId);
+      var employeeId = employees.filter(ee => ee.employee === answer.remove)[0].id;      
         
       connection.query(
         'DELETE FROM employee WHERE id = ?', 
@@ -250,7 +248,8 @@ function removeEmployee() {
           if (err) throw err;
           console.log(answer.remove + ' was removed');
           console.log(employeeId);
-          console.log(answer);
+          console.log(answer, employeeId);
+          
           employeeManager();
         }
       );
@@ -259,16 +258,23 @@ function removeEmployee() {
 }
 
 function editEmployeeRole() {
-  var roles = [];
-  var employees = [];
-  var query = 'SELECT r.id, r.title, e.id, CONCAT(e.first_name," ",e.last_name) AS employee '; 
-  query += 'FROM role r JOIN employee e ON e.role_id = r.id';
-  connection.query(query, function (err,res) {
+  var roleNames = [];
+  var employeeNames = [];
+  var query = 'SELECT id, CONCAT(first_name," ",last_name) AS employee FROM employee'; 
+  
+  connection.query(query, function (err, employees) {
     if (err) throw err;
-    for (var i = 0; i < res.length; i++) {
-      roles.push(res[i].title);
-      employees.push(res[i].employee);
-    }
+
+    query = 'SELECT id, title FROM role';
+    connection.query(query, function(err, roles) {
+      if (err) throw err;
+    
+      for (var i = 0; i < employees.length; i++) {
+        employeeNames.push(employees[i].employee);
+      }
+      for (var i = 0; i < roles.length; i++) {
+        roleNames.push(roles[i].title);
+      }
 
     inquirer
     .prompt([
@@ -276,62 +282,86 @@ function editEmployeeRole() {
         name: 'empSelection',
         type: 'list',
         message: 'Which employee\'s role do you want to update?',
-        choices: employees
+        choices: employeeNames
       },
       {
         name: 'roleSelection',
         type: 'list',
         message: 'Which role do you want to set for the selected employee?',
-        choices: roles
+        choices: roleNames
       }
     ])
-    .then(function(answer) {
-      console.log(answer);
-      const selectedEmp = answer.empSelection;
-      const eeName = selectedEmp.split(' ')
-      console.log(eeName[0],eeName[1]);
-
-
-      employeeManager();
+    .then(function(answer) {        
+      var employeeId = employees.filter(emp => emp.employee === answer.empSelection)[0].id;
+      var roleId = roles.filter(role => role.title === answer.roleSelection)[0].id;
+      
+      var query = 'UPDATE employee SET role_id = ? WHERE id = ?'
+      
+      connection.query(query, [roleId, employeeId], function(err, res) {
+        if (err) throw err;
+        console.log(answer.empSelection  + '\'s role was set to ' + answer.roleSelection);
+        
+        employeeManager();
+        }
+      );
     });
   });
-};
+});
+}
 
 function editEmployeeMgr() {
-  var employees = [];
-  var query = 'SELECT CONCAT(first_name," ",last_name) AS employee FROM employee'; 
-  connection.query(query, function (err,res) {
+  var employeeNames = [];
+  var managerNames = ['None'];
+  var query = 'SELECT id, CONCAT(first_name," ",last_name) AS employee FROM employee'; 
+  
+  connection.query(query, function (err, employees) {
     if (err) throw err;
-    for (var i = 0; i < res.length; i++) {
-      employees.push(res[i].employee);
-    }
 
+    query = 'SELECT id, CONCAT(first_name," ",last_name) AS manager FROM employee';
+    connection.query(query, function(err, managers) {
+      if (err) throw err;
+    
+      for (var i = 0; i < employees.length; i++) {
+        employeeNames.push(employees[i].employee);
+      }
+      for (var i = 0; i < managers.length; i++) {
+        managerNames.push(managers[i].manager);
+      }
     inquirer
     .prompt([
       {
         name: 'selectEmployee',
         type: 'list',
         message: 'Which employee\'s manager do you want to update?',
-        choices: employees
+        choices: employeeNames
       },
       {
-        name: 'selectMrg',
+        name: 'selectMgr',
         type: 'list',
         message: 'Which employee do you want to set as the manager for the selected employee?',
-        choices: employees
+        choices: managerNames
       }
     ])
-    .then(function(answer) {
-      console.log(answer);
-      const selectedEmp = answer.selectEmployee;
-      const eeName = selectedEmp.split(' ')
-      console.log(eeName[0],eeName[1]);
+    .then(function(answer) {        
+      var managerId = null;
+      if (answer.selectMgr !== 'None') {
+        managerId = managers.filter(mgr => mgr.manager === answer.selectMgr)[0].id;
+      }
+      var employeeId = employees.filter(emp => emp.employee === answer.selectEmployee)[0].id;
 
-
-      employeeManager();
+      var query = 'UPDATE employee SET manager_id = ? WHERE id = ?'
+      
+      connection.query(query, [managerId, employeeId], function(err, res) {
+        if (err) throw err;
+        console.log(answer.selectEmployee  + '\'s manager was set to ' + answer.selectMgr);
+        
+        employeeManager();
+        }
+      );
     });
   });
-};
+});
+}
 
 function addRole() {
   var departments = [];
