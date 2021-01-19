@@ -1,7 +1,7 @@
 const inquirer = require('inquirer');
 const mysql = require('mysql');
 const cTable = require('console.table');
-var figlet = require('figlet');
+const figlet = require('figlet');
 
 
 figlet('Employee\n \n Manager', function(err, data) {
@@ -28,11 +28,6 @@ function connectToDb() {
     employeeManager();
   })
 }
-// connection.connect(function(err) {
-//   if (err) throw err;  
-
-//   employeeManager();
-// })
 
 function employeeManager() {
   inquirer
@@ -48,10 +43,11 @@ function employeeManager() {
         'Remove Employee',
         'Update Employee Role',
         'Update Employee Manager',
+        'View All Roles',        
+        'Add Role',
         'View All Departments',
-        'View All Roles',
+        'View Budget by Department',
         'Add Department',
-        'Add Role'
       ]
     })
     .then(function(answer) {
@@ -68,14 +64,6 @@ function employeeManager() {
           viewEmployeesMgr();
           break;
 
-        case 'View All Departments':
-          viewDepartments();
-          break;
-
-        case 'View All Roles':
-          viewRoles();
-          break;
-
         case 'Add Employee':
           addEmployee();
           break;
@@ -83,7 +71,7 @@ function employeeManager() {
         case 'Remove Employee':
           removeEmployee();
           break;
-
+        
         case 'Update Employee Role':
           editEmployeeRole();
           break;
@@ -92,12 +80,24 @@ function employeeManager() {
           editEmployeeMgr();
           break;
 
-        case 'Add Department':
-          addDepartment();
-          break;
+        case 'View All Roles':
+          viewRoles();
+          break;        
 
         case 'Add Role':
           addRole();
+          break;
+
+        case 'View All Departments':
+          viewDepartments();
+          break;
+
+        case 'View Budget by Department':
+          viewDeptBudget();
+          break;
+
+        case 'Add Department':
+          addDepartment();
           break;
       }
     });
@@ -112,7 +112,9 @@ function viewEmployees() {
   query += 'LEFT JOIN employee e2 ON e2.id = ee.manager_id';
   connection.query(query, function(err, res) {
     if (err) throw err;
+    console.log('\n');
     console.table(res);
+    console.log('\n');
 
     employeeManager();
   });  
@@ -128,7 +130,9 @@ function viewEmployeesDept() {
   query += 'Order by department';
   connection.query(query, function(err, res) {
     if (err) throw err;
+    console.log('\n');
     console.table(res);
+    console.log('\n');
 
     employeeManager();
   });  
@@ -145,29 +149,9 @@ function viewEmployeesMgr() {
   connection.query(query, function(err, res) {
     if (err) throw err;
 
+    console.log('\n');
     console.table(res);
-
-    employeeManager();
-  });  
-}
-
-function viewDepartments() {
-  var query = 'SELECT id, name AS department FROM department ORDER BY name'; 
-  connection.query(query, function(err, res) {
-    if (err) throw err;
-    
-    console.table(res);
-
-    employeeManager();
-  });  
-}
-
-function viewRoles() {
-  var query = 'SELECT id, title AS role FROM role ORDER BY title'; 
-  connection.query(query, function(err, res) {
-    if (err) throw err;
-    
-    console.table(res);
+    console.log('\n');
 
     employeeManager();
   });  
@@ -176,12 +160,12 @@ function viewRoles() {
 function addEmployee() {
   var roleNames = [];
   var managerNames = ['None'];
-  var query = 'SELECT id, CONCAT(first_name," ",last_name) AS manager FROM employee'; 
+  var query = 'SELECT id, CONCAT(first_name," ",last_name) AS manager FROM employee ORDER BY manager'; 
   
   connection.query(query, function (err, managers) {
     if (err) throw err;
 
-    query = 'SELECT id, title FROM role';
+    query = 'SELECT id, title FROM role ORDER BY title';
     connection.query(query, function(err, roles) {
       if (err) throw err;
     
@@ -223,8 +207,6 @@ function addEmployee() {
           managerId = managers.filter(mgr => mgr.manager === answer.eeMgr)[0].id;
         }
         var roleId = roles.filter(role => role.title === answer.eeRole)[0].id;
-
-        console.log(answer, managerId, roleId);
         
         connection.query(
           'INSERT INTO employee SET ?',
@@ -236,7 +218,7 @@ function addEmployee() {
           },
           function(err) {
             if (err) throw err;
-            console.log('The employee was successfully added');
+            console.log('\nAdded ' + answer.firstName + ' ' + answer.lastName + ' to the database\n');
             employeeManager();
           }
         );
@@ -273,9 +255,7 @@ function removeEmployee() {
         ],
         function(err) {
           if (err) throw err;
-          console.log('Removed employee ' + answer.remove + ' from the database');
-          console.log(employeeId);
-          console.log(answer, employeeId);
+          console.log('\nRemoved employee ' + answer.remove + ' from the database\n');
           
           employeeManager();
         }
@@ -326,7 +306,7 @@ function editEmployeeRole() {
       
       connection.query(query, [roleId, employeeId], function(err, res) {
         if (err) throw err;
-        console.log(answer.empSelection  + '\'s role was set to ' + answer.roleSelection);
+        console.log('\n' + answer.empSelection  + '\'s role was set to ' + answer.roleSelection + '\n');
         
         employeeManager();
         }
@@ -365,7 +345,7 @@ function editEmployeeMgr() {
       {
         name: 'selectMgr',
         type: 'list',
-        message: 'Which employee do you want to set as the manager for the selected employee?',
+        message: 'Which manager do you want to set for the selected employee?',
         choices: managerNames
       }
     ])
@@ -380,7 +360,7 @@ function editEmployeeMgr() {
       
       connection.query(query, [managerId, employeeId], function(err, res) {
         if (err) throw err;
-        console.log(answer.selectEmployee  + '\'s manager was set to ' + answer.selectMgr);
+        console.log('\n' + answer.selectEmployee  + '\'s manager was set to ' + answer.selectMgr + '\n');
         
         employeeManager();
         }
@@ -388,6 +368,19 @@ function editEmployeeMgr() {
     });
   });
 });
+}
+
+function viewDepartments() {
+  var query = 'SELECT id, name AS department FROM department ORDER BY name'; 
+  connection.query(query, function(err, res) {
+    if (err) throw err;
+    
+    console.log('\n');
+    console.table(res);
+    console.log('\n');
+
+    employeeManager();
+  });  
 }
 
 function addDepartment() {
@@ -403,12 +396,25 @@ function addDepartment() {
     connection.query('INSERT INTO department SET ?', { name: answer.department},
     function(err) {
       if (err) throw err;
-      console.log(answer.department + ' was successfully added as a department');
+      console.log('\n' + answer.department + ' was successfully added as a department\n');
       
       employeeManager();
       }
     );
   });
+}
+
+function viewRoles() {
+  var query = 'SELECT id, title AS role FROM role ORDER BY title'; 
+  connection.query(query, function(err, res) {
+    if (err) throw err;
+    
+    console.log('\n');
+    console.table(res);
+    console.log('\n');
+
+    employeeManager();
+  });  
 }
 
 function addRole() {
@@ -430,7 +436,14 @@ function addRole() {
       {
       name: 'salary',
       type: 'input',
-      message: 'What is the salary of the role?'
+      message: 'What is the salary of the role?',
+      validate: function(value) {
+        if (isNaN(value) === false) {
+          return true;
+        }
+        console.log(' Please enter a number');
+        return false;
+        }
       },
       {
       name: 'eeDept',
@@ -451,7 +464,40 @@ function addRole() {
         },
         function(err) {
           if (err) throw err;
-          console.log(answer.title + ' was successfully added as a Role');
+          console.log('\n' + answer.title + ' was successfully added as a Role in the ' + answer.eeDept + ' department\n');
+          employeeManager();
+        }
+      );
+    });
+  });
+}
+
+function viewDeptBudget() {
+  var departmentNames = [];
+  var query = 'SELECT id, name AS department FROM department'; 
+  connection.query(query, function (err, departments) {
+    if (err) throw err;
+    for (var i = 0; i < departments.length; i++) {
+      departmentNames.push(departments[i].department);
+    }  
+
+    inquirer
+    .prompt([
+      {
+      name: 'chooseDept',
+      type: 'list',
+      message: 'Which department\'s budget do you want to view?',
+      choices: departmentNames
+      }
+    ])
+    .then(function(answer) {        
+      var departmentId = departments.filter(dept => dept.department === answer.chooseDept)[0].id;
+      
+      var query = 'SELECT SUM(salary) AS TotalBudget FROM department d ';
+      query+= 'LEFT JOIN role r ON r.department_id = d.id WHERE d.id = ?';
+      connection.query(query, [departmentId], function(err, res) {
+        if (err) throw err;
+          console.log('\nTotal Budget for the ' + answer.chooseDept + ' department is $' + res[0].TotalBudget + '\n');
           employeeManager();
         }
       );
